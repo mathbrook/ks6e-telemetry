@@ -21,6 +21,8 @@ import serial
 import glob
 from parser_api import *
 from decimal import Decimal
+from embed_plot_test import *
+matplotlib.use('TkAgg')
 __file__ = sys.path[0]
 
 parser = argparse.ArgumentParser(description="Telemetry console")
@@ -279,7 +281,7 @@ def read_from_teensy_thread(window, comport):
     ser = serial.Serial()
     ser.port = comport #Arduino serial port
     ser.baudrate = 256000
-    ser.timeout = 10 #specify timeout when using readline()
+    ser.timeout = .1 #specify timeout when using readline()
     ser.open()
     rl=ReadLine(ser)
     if ser.is_open==True:
@@ -291,8 +293,10 @@ def read_from_teensy_thread(window, comport):
     while True:
         while (ser.in_waiting > 0):
             # print(ser.in_waiting)
+
             line=ser.readline()
-            line=line.replace(b'\r\n',b'')
+            # print(line)
+            line=line.replace(b'\n',b'')
             raw_id = (line.split(b',')[0]).decode()
             raw_message = (line.split(b',')[1]).decode()
             length = 8
@@ -392,7 +396,9 @@ def get_bms_detailed_messages():
     return dictionary, dictionary2
 
 
-
+fig = matplotlib.figure.Figure(figsize=(5, 4), dpi=100)
+t = np.arange(0, 3, .01)
+fig.add_subplot(111).plot(t, 2 * np.sin(2 * np.pi * t))
 
 '''
 @brief: The main function to spawn the PySimpleGUI and handle events
@@ -500,9 +506,11 @@ def main():
     column5 = sg.Column(voltages_second_column + [[sg.Text(" ", size=(35,1), pad=(0,0), font=text_font)]] + bms_detailed_temps + temperatures, vertical_alignment='t')
 
     # Finalize layout
-    layout = [[status_header_column1, status_header_column2, status_header_column3, status_header_column4, status_header_column5], [column1, column2, column3]]
+    layout = [[status_header_column1, status_header_column2, status_header_column3, status_header_column4, status_header_column5], [column1, column2, column3,sg.Canvas(key='-CANVAS-')]]
 
     window = sg.Window("KSU Motorsports Live Telemetry Console", resizable=True).Layout(layout).Finalize()
+    fig_canvas_agg = draw_figure(window['-CANVAS-'].TKCanvas, fig)
+
     # window.Maximize()
     CONNECTION = int(user_prompt("Enter Connection Type","SERVER=0, TEENSY=1, TEST_CSV=2"))
     # Choose messaging thread based on connection type
